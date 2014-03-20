@@ -309,14 +309,17 @@ class Sync extends Command {
 					break;
 			}
 
-			$codeReview = 1;
-			$comments = array();
-			$commentsFile = '.comments/' . $pullRequest['branch'];
-			if (file_exists($commentsFile)) {
-				$comments = json_decode(file_get_contents($commentsFile));
-				if (count($comments) > 0) {
-					$codeReview = -1;
-					$message .= "\n\n" . 'Found some CGL problems';
+			$codeReview = 0;
+			if ($this->configuration['codeSniffer']['active'] === TRUE) {
+				$codeReview = 1;
+				$comments = array();
+				$commentsFile = '.comments/' . $pullRequest['branch'];
+				if (file_exists($commentsFile)) {
+					$comments = json_decode(file_get_contents($commentsFile));
+					if (count($comments) > 0) {
+						$codeReview = -1;
+						$message .= "\n\n" . 'Found some CGL problems';
+					}
 				}
 			}
 
