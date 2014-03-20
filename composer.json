@@ -1,0 +1,36 @@
+{
+	"name": "famelo\/george",
+	"description": "A tool to sync gerrit and github",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Marc Neuhaus",
+			"email": "apocalip@gmail.com"
+		}
+	],
+	"require": {
+		"php": ">=5.3.3",
+		"symfony\/console": "~2.1",
+		"symfony\/process": "~2.1",
+		"symfony\/filesystem": "~2.1",
+		"kherge\/amend": "3.*",
+		"frenkynet\/flysystem": "*",
+		"alchemy\/zippy": "*",
+		"camspiers\/json-pretty": "*",
+		"knplabs\/github-api": "*",
+		"symfony\/yaml": "*",
+		"kriswallsmith\/buzz": "dev-master as 0.5.0",
+		"l3l0\/php-travis-client": "*",
+		"squizlabs\/php_codesniffer": "*"
+	},
+	"autoload": {
+		"psr-0": {
+			"Famelo\\George": "src"
+		}
+	},
+	"minimum-stability": "dev",
+	"bin": [
+		"bin\/george"
+	],
+	"version": "0.0.2"
+}

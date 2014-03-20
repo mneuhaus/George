@@ -1,0 +1,22 @@
+{
+    "alias": "george.phar",
+    "chmod": "0755",
+    "directories": ["src"],
+    "files": [
+        "vendor/herrera-io/phar-update/res/schema.json"
+    ],
+    "finder": [
+        {
+            "name": "*.php",
+            "exclude": ["Tests"],
+            "in": "vendor"
+        }
+    ],
+    "main": "bin/george",
+    "git-version": "git_tag",
+    "output": "build/george-@git-version@.phar",
+    "replacements": {
+        "manifest_url": "https://raw.github.com/mneuhaus/George/master/releases.json"
+    },
+    "stub": true
+}

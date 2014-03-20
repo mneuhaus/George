@@ -1,0 +1,5 @@
+.george.yml
+give-*.phar
+.build
+/test/
+/vendor/
