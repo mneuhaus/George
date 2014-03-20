@@ -16,7 +16,7 @@ class CodeSniffer {
 
 	public function __construct($standard = 'TYPO3Flow') {
 		$this->codeSniffer = new \PHP_CodeSniffer_CLI();
-		\PHP_CodeSniffer::setConfigData('report_format', 'json');
+		// \PHP_CodeSniffer::setConfigData('report_format', 'json');
 		$this->standard = $standard;
 	}
 

@@ -38,6 +38,21 @@ class Sync extends Command {
 	protected $pullRequests = array();
 
 	/**
+	 * @var integer
+	 */
+	protected $pendingBuilds = 0;
+
+	/**
+	 * @var integer
+	 */
+	protected $maxBuilds = 10;
+
+	/**
+	 * @var string
+	 */
+	protected $salt = '-z8asdf';
+
+	/**
 	 * @override
 	 */
 	protected function configure() {
@@ -68,10 +83,13 @@ class Sync extends Command {
 			$this->configuration['gerrit']['username'],
 			$this->configuration['gerrit']['password']
 		);
-		$this->travis = new Travis($this->configuration['github']['repository']);
+		$this->travis = new Travis(
+			$this->configuration['travis']['token'],
+			$this->configuration['github']['repository'],
+			$this->output
+		);
 		$this->gitHub = new GitHub(
-			$this->configuration['github']['username'],
-			$this->configuration['github']['password'],
+			$this->configuration['github']['token'],
 			$this->configuration['github']['repository']
 		);
 		$this->codeSniffer = new CodeSniffer();
@@ -80,10 +98,16 @@ class Sync extends Command {
 			mkdir('.comments');
 		}
 
-		// $this->updateBaseBranches();
+		$this->maxBuilds = $this->configuration['travis']['maxBuilds'];
+
+		$this->updateBaseBranches();
 		$this->fetchExistingPullRequests();
-		$this->createPullRequestFromChangeSets();
 		$this->review();
+		if ($this->maxBuilds > $this->pendingBuilds) {
+			$this->createPullRequestFromChangeSets();
+		} else {
+			$this->output->writeln('maximum builds reached');
+		}
 	}
 
 	public function updateBaseBranches() {
@@ -108,22 +132,22 @@ class Sync extends Command {
 			$focus = $this->input->getOption('change-id');
 		}
 
-		$batch = 10;
-		if ($this->input->hasOption('batch')) {
-			$batch = intval($this->input->getOption('batch'));
-		}
-
-		$changeSets = $this->gerrit->getChangeSets(300);
+		$changeSets = $this->gerrit->getChangeSets(500);
 
 		$target = $target = $this->configuration['git']['target'];
-		$counter = 0;
 		foreach ($changeSets as $changeSet) {
-			if ($counter === $batch) {
+			if ($this->output->isVeryVerbose()) {
+				$this->output->writeln('<comment>Checking: ' . $changeSet->subject . '</comment>');
+			}
+			if ($this->pendingBuilds >= $this->maxBuilds) {
+				$this->output->writeln('maximum builds reached');
 				break;
 			}
 
 			if (stristr($changeSet->subject, '[WIP]') && $focus === NULL) {
-				$this->output->writeln('<comment>Skipping: ' . $changeSet->subject . '</comment>');
+				if ($this->output->isVerbose()) {
+					$this->output->writeln('<comment>Skipping: ' . $changeSet->subject . '</comment>');
+				}
 				continue;
 			}
 
@@ -132,32 +156,62 @@ class Sync extends Command {
 			}
 
 			$changeId = $changeSet->change_id;
+			$fullChangeId = urlencode($this->configuration['gerrit']['project']) . '~' . $changeSet->branch . '~' . $changeId;
 			$revisions = get_object_vars($changeSet->revisions);
 			$revision = current($revisions);
 			$revision->revision_id = key($revisions);
+			$revisionId = $revision->revision_id;
 
-			if (isset($this->pullRequests[$changeSet->change_id . '-' . $revision->revision_id])) {
-				$this->output->writeln('<comment>Skipping already pushed: ' . $changeSet->subject . '</comment>');
+			if (isset($this->pullRequests[$changeSet->change_id . '-' . $revision->revision_id . $this->salt])) {
+				if ($this->output->isVerbose()) {
+					$this->output->writeln('<comment>Skipping already pushed: ' . $changeSet->subject . '</comment>');
+				}
+				continue;
+			}
+
+			if ($this->gerrit->isAlreadyReviewed($fullChangeId, $revision->revision_id)) {
+				if ($this->output->isVerbose()) {
+					$this->output->writeln('<comment>Already reviewed: ' . $changeSet->subject . '</comment>');
+				}
 				continue;
 			}
 
 			$this->output->writeln('<info>Processing: ' . $changeSet->subject . '</info>');
-			$counter++;
 
-			$branchName = 'change-' . substr($changeId, 0, 7) . '-' . substr($revision->revision_id, 0, 7);
+			$branchName = 'change-' . substr($changeId, 0, 7) . '-' . substr($revision->revision_id, 0, 7) . $this->salt;
 
 			if (!Git::branchExists($branchName)) {
 				Git::checkout($changeSet->branch);
 				Git::deleteBranch($branchName);
 			}
 
+			Git::resetHard();
 			Git::createBranch($branchName, $changeSet->branch);
-			Git::cherryPickChangeSet($revision->fetch->http->url, $revision->fetch->http->ref);
+			$output = Git::cherryPickChangeSet($revision->fetch->http->url, $revision->fetch->http->ref);
+
+			if (stristr($output, 'error: could not apply')) {
+				$this->output->writeln('<error>Failed to cherry-pick: ' . $changeSet->subject . '</error>');
+				if ($this->configuration['rebasePrompt'] === TRUE) {
+					$message = 'Failed to Cherry-Pick this change onto current ' . $changeSet->branch . ' branch.';
+					$message.= "\n" . 'Please rebase this change.';
+					$message.= "\n\n" . $output;
+
+					$this->gerrit->review($fullChangeId, $revisionId, $message, 0, -1);
+				}
+
+				Git::resetHard();
+				Git::checkout($changeSet->branch);
+				Git::deleteBranch($branchName);
+				continue;
+			}
+
 			Git::push($target, $branchName);
 
-			$comments = $this->gerrit->reviewFiles($changeSet);
-			if (count($comments) > 0) {
-				file_put_contents('.comments/' . $branchName, json_encode($comments, JSON_PRETTY_PRINT));
+			if ($this->configuration['codeSniffer']['active'] === TRUE) {
+				$comments = $this->gerrit->reviewFiles($changeSet);
+				if (count($comments) > 0) {
+					file_put_contents('.comments/' . $branchName, json_encode($comments, JSON_PRETTY_PRINT));
+				}
 			}
 
 			Git::checkout($changeSet->branch);
@@ -171,11 +225,13 @@ class Sync extends Command {
 					'title' => $changeSet->subject . ' (Revision ' . $revision->_number . ')',
 					'body'  => $this->getMessage($revision)
 				));
+				$this->pendingBuilds++;
 			} catch(\Exception $e) {}
 		}
 	}
 
 	public function fetchExistingPullRequests() {
+		$this->output->writeln('Fetching PullRequests');
 		$pullRequests = $this->gitHub->getPullRequests();
 		foreach ($pullRequests as $pullRequest) {
 			preg_match('/Change-Id: (.+)/', $pullRequest['body'], $match);
@@ -189,16 +245,27 @@ class Sync extends Command {
 				continue;
 			}
 			$revisionId = $match[1];
+			$status = $this->travis->getBranchStatus($pullRequest['head']['ref']);
 
-			$this->pullRequests[$changeId . '-' . $revisionId] = array(
+			if (in_array($status->branch->state, array('created', 'started'))) {
+				$this->pendingBuilds++;
+			}
+			if ($this->output->isVerbose()) {
+				$this->output->writeln('Fetching: ' . $pullRequest['title']);
+			}
+
+			$fullChangeId = urlencode($this->configuration['gerrit']['project']) . '~' . $pullRequest['base']['ref'] . '~' . $changeId;
+			$this->pullRequests[$changeId . '-' . $revisionId . $this->salt] = array(
 				'title' => $pullRequest['title'],
 				'state' => $pullRequest['state'],
+				'number' => $pullRequest['number'],
 				'id' => $pullRequest['id'],
-				'changeId' => $changeId,
+				'changeId' => $fullChangeId,
 				'revisionId' => $revisionId,
 				'branch' => $pullRequest['head']['ref'],
-				'status' => $this->travis->getBranchStatus($pullRequest['head']['ref']),
-				'review'=> $this->gerrit->getMyReview($changeId, $revisionId)
+				'base' => $pullRequest['base']['ref'],
+				'status' => $status,
+				'review'=> $this->gerrit->getMyReview($fullChangeId, $revisionId)
 			);
 		}
 	}
@@ -216,11 +283,11 @@ class Sync extends Command {
 			if ($pullRequest['review'] !== NULL
 				&& $pullRequest['review']['review'] !== 0
 				&& $pullRequest['review']['verified'] !== 0) {
-				$this->output->writeln('<comment>Skipping already reviewed: ' . $pullRequest['title'] . '</comment>');
+				$this->gitHub->closePullRequest($pullRequest['number']);
+
+				// $this->output->writeln('<comment>Skipping already reviewed: ' . $pullRequest['title'] . '</comment>');
 				continue;
 			}
-
-			$this->output->writeln('<info>Reviewing: : ' . $pullRequest['title'] . '</info>');
 
 			$message = '';
 			$verified = 0;
@@ -247,11 +314,16 @@ class Sync extends Command {
 			$commentsFile = '.comments/' . $pullRequest['branch'];
 			if (file_exists($commentsFile)) {
 				$comments = json_decode(file_get_contents($commentsFile));
-				$codeReview = -1;
-				$message .= "\n\n" . 'Found ' . count($comments) . ' CGL problems';
+				if (count($comments) > 0) {
+					$codeReview = -1;
+					$message .= "\n\n" . 'Found some CGL problems';
+				}
 			}
-			$message = nl2br($message);
-			$this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
+
+			if ($verified !== 0) {
+				$this->output->writeln('<info>Reviewing: ' . $pullRequest['title'] . '</info>');
+				$this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
+			}
 		}
 	}
 
@@ -268,13 +340,16 @@ class Sync extends Command {
 				'master'
 			),
 			'codeSniffer' => array(
-				'standard' => 'TYPO3Flow'
-			)
+				'standard' => 'TYPO3Flow',
+				'active' => TRUE
+			),
+			'travis' => array(
+				'maxBuilds' => 2
+			),
+			'rebasePrompt' => TRUE
 		);
 		$configuration = Yaml::parse('.george.yml');
-		$branches = $configuration['branches'];
-		$configuration = array_merge_recursive($defaults, $configuration);
-		$configuration['branches'] = $branches;
+		$configuration = array_replace_recursive($defaults, $configuration);
 		return $configuration;
 	}
 

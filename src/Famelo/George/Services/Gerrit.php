@@ -55,6 +55,7 @@ class Gerrit extends Browser {
 		}
 
 		$labels = get_object_vars($rawReviews->labels);
+
 		$reviews = array();
 		if (isset($labels['Verified']) && is_array($labels['Verified']->all)) {
 			foreach ($labels['Verified']->all as $review) {
@@ -152,6 +153,17 @@ class Gerrit extends Browser {
 			}
 		}
 		return $comments;
+	}
+
+	public function isAlreadyReviewed($changeId, $revisionId) {
+		$review = $this->getMyReview($changeId, $revisionId);
+		if ($review == NULL) {
+			return FALSE;
+		}
+		if ($review['review'] == 0 && $review['verified'] == 0) {
+			return FALSE;
+		}
+		return TRUE;
 	}
 }
 

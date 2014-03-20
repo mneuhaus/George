@@ -13,7 +13,7 @@ class Git {
 	}
 
 	static public function cherryPickChangeSet($url, $ref) {
-		self::executeShellCommand('git fetch ' . $url . ' ' . $ref . ' && git cherry-pick FETCH_HEAD');
+		return self::executeShellCommand('git fetch ' . $url . ' ' . $ref . ' && git cherry-pick FETCH_HEAD');
 	}
 
 	static public function resetHard() {
@@ -39,7 +39,8 @@ class Git {
 
 		$process = new Process($command);
 		$process->run();
-		return $process->getOutput();
+		return $process->getOutput() . $process->getErrorOutput();
+		// return $process->getOutput();
 
 		// $output = '';
 		// $fp = popen($command, 'r');
