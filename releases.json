@@ -16,5 +16,17 @@
 		"sha1": "7047e47a4e7a2ccd1df1529f0dc3e02fff62838a",
 		"url": "https:\/\/github.com\/mneuhaus\/george\/releases\/download\/0.0.5\/george-0.0.5.phar",
 		"version": "0.0.5"
+	},
+	{
+		"name": "george.phar",
+		"sha1": "f7295a17219121ca292a7e1fdb3fcd225a0a8935",
+		"url": "https:\/\/github.com\/mneuhaus\/george\/releases\/download\/0.0.6\/george-0.0.6.phar",
+		"version": "0.0.6"
+	},
+	{
+		"name": "george.phar",
+		"sha1": "ba074fea91f9d2d03ae9c5fa601a7576de9d6e1d",
+		"url": "https:\/\/github.com\/mneuhaus\/george\/releases\/download\/0.0.7\/george-0.0.7.phar",
+		"version": "0.0.7"
 	}
 ]
