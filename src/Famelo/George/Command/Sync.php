@@ -323,7 +323,7 @@ class Sync extends Command {
 
 			if ($verified !== 0) {
 				$this->output->writeln('<info>Reviewing: ' . $pullRequest['title'] . '</info>');
-				// $this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
+				$this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
 			}
 		}
 	}
