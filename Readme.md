@@ -4,7 +4,7 @@ George is a bridge between Gerrit - GitHub - Travis with a pinch of php_codesnif
 
 ## Download to local directory
 ```
-curl -sL https://github.com/mneuhaus/George/releases/download/0.0.3/george-0.0.3.phar > george.phar
+curl -s https://github.com/mneuhaus/George/releases/download/0.0.4/george-0.0.4.phar > george.phar
 chmod +x george.phar
 ```
 
