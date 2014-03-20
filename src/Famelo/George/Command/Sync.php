@@ -115,7 +115,7 @@ class Sync extends Command {
 		$source = $this->configuration['git']['source'];
 		$target = $this->configuration['git']['target'];
 		foreach ($branches as $branch) {
-			$this->output->writeln('<info>Updating Branch: ' . $branch . '</info>');
+			$this->output->writeln('Updating Branch: ' . $branch);
 			if (!Git::branchExists($branch)) {
 				Git::createBranch($branch, $source . '/' . $branch);
 			}
@@ -280,9 +280,7 @@ class Sync extends Command {
 				continue;
 			}
 
-			if ($pullRequest['review'] !== NULL
-				&& $pullRequest['review']['review'] !== 0
-				&& $pullRequest['review']['verified'] !== 0) {
+			if ($this->gerrit->isAlreadyReviewed($pullRequest['changeId'], $pullRequest['revisionId'])) {
 				$this->gitHub->closePullRequest($pullRequest['number']);
 
 				// $this->output->writeln('<comment>Skipping already reviewed: ' . $pullRequest['title'] . '</comment>');
@@ -325,7 +323,7 @@ class Sync extends Command {
 
 			if ($verified !== 0) {
 				$this->output->writeln('<info>Reviewing: ' . $pullRequest['title'] . '</info>');
-				$this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
+				// $this->gerrit->review($pullRequest['changeId'], $pullRequest['revisionId'], $message, $codeReview, $verified, $comments);
 			}
 		}
 	}
