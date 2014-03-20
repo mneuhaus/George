@@ -135,7 +135,7 @@ class Gerrit extends Browser {
 
 		$comments = array();
 		foreach ($files as $file) {
-			if (!file_exists($file)) {
+			if (!file_exists($file) || substr($file, -4) !== '.php') {
 				continue;
 			}
 			$result = $this->codeSniffer->sniff($file);
