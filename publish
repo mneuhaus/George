@@ -5,10 +5,10 @@ require 'vendor/autoload.php';
 
 $username = 'mneuhaus';
 $repository = 'George';
-$skipBuilding = FALSE;
+$skipBuilding = TRUE;
 $skipManifestUpdate = FALSE;
-$skipRelease = FALSE;
-$skipReleaseUpload = FALSE;
+$skipRelease = TRUE;
+$skipReleaseUpload = TRUE;
 // $releaseId = 158990;
 
 echo 'Passwort for ' . $username . ': ';
@@ -73,7 +73,7 @@ if ($skipManifestUpdate === FALSE) {
 	$manifest = array();
 
 	foreach ($files as $file) {
-		if (substr($file, 0, 6) === 'george-') {
+		if (substr($file, 0, 7) === 'george-') {
 			$sha1 = sha1_file('build/' . $file);
 			preg_match('/george-([0-9\.]*).phar/', $file, $match);
 			if (isset($match[1])) {
