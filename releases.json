@@ -10,5 +10,11 @@
 		"sha1": "159be6123683cfb1347ea83c201df03d0b1bae6e",
 		"url": "https:\/\/github.com\/mneuhaus\/george\/releases\/download\/0.0.4\/george-0.0.4.phar",
 		"version": "0.0.4"
+	},
+	{
+		"name": "george.phar",
+		"sha1": "7047e47a4e7a2ccd1df1529f0dc3e02fff62838a",
+		"url": "https:\/\/github.com\/mneuhaus\/george\/releases\/download\/0.0.5\/george-0.0.5.phar",
+		"version": "0.0.5"
 	}
 ]

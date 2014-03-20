@@ -5,10 +5,10 @@ require 'vendor/autoload.php';
 
 $username = 'mneuhaus';
 $repository = 'George';
-$skipBuilding = TRUE;
+$skipBuilding = FALSE;
 $skipManifestUpdate = FALSE;
-$skipRelease = TRUE;
-$skipReleaseUpload = TRUE;
+$skipRelease = FALSE;
+$skipReleaseUpload = FALSE;
 // $releaseId = 158990;
 
 echo 'Passwort for ' . $username . ': ';
